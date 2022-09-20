@@ -89,46 +89,8 @@ class gru_module_1(nn.Module):
         return X2, X3
 
 
+
 class gru_module_2(nn.Module):
-    '''
-    Module-2 of Neural GrU.
-
-    Parameters
-    ----------
-    pi_tilda_c : torch tensor of shape (24, )
-        Price of importing power from cheapest time slot
-    
-    pi_d : torch tensor of shape (24, )
-        Discharging prices
-
-    pi_p : torch tensor of shape (24, )
-        PV Energy prices
-
-    pi_g : torch tensor of shape (24, )
-        Grid prices
-
-    Returns
-    -------
-    X1 : torch tensor of shape (24, 3)
-        a^t : One hot vectors representing the cheapest source [d', p, g]; pi_d' = pi_d + pi_tilda_c
-    '''
-
-    def __init__(self, eta_d):
-        super().__init__()
-
-        self.eta_d = eta_d
-
-    def forward(self, pi_tilda_c, pi_d, pi_p, pi_g, B):
-        pi_d_eta = pi_d / self.eta_d
-
-        X = torch.stack([pi_tilda_c + pi_d_eta, pi_p, pi_g], dim=1)
-
-        X1 = F.softmin(B * X, dim=1)
-
-        return X1
-
-
-class gru_module_2_v2(nn.Module):
     '''
     Module-2 of Neural GrU.
 
@@ -200,55 +162,8 @@ class gru_module_3(nn.Module):
         return X2
 
 
+
 class gru_module_4(nn.Module):
-    '''
-    Module-4 of Neural GrU.
-
-    Parameters
-    ----------
-    X : torch tensor of shape (24, )
-        d_t : Total demand vector
-
-    X_m1 : torch tensor of shape (24, 24)
-        i^t : One hot vector representing the cheapest time slot to import power from
-
-    X_m2 : torch tensor of shape (24, 3)
-        a^t : One hot vectors representing the cheapest source [d', p, g]; pi_d' = pi_d + pi_tilda_c
-
-    X_m3 : torch tensor of shape (24, 24)
-        i_tilda^t : One hot vector representing the time slots to store the charge to be discharged at time slot t
-
-    Returns
-    -------
-    Y : torch tensor of shape (5, 24)
-        d^star_t : demand breakup vectors
-
-    '''
-
-    def __init__(self, eta_c, eta_d):
-        super().__init__()
-
-        self.eta_c = eta_c
-        self.eta_d = eta_d
-
-    def forward(self, X, X_m1, X_m2, X_m3):
-        
-        d_g = X_m2[:, 2] * X
-        d_p = X_m2[:, 1] * X
-        d_d = X_m2[:, 0] * X / self.eta_d
-        d_c = torch.sum(X_m1 * d_d.reshape((24,1)) / self.eta_c, dim=0)
-        d_s = torch.sum(X_m3 * d_d.reshape((24,1)), dim=0)
-        # d_s = torch.sum(X_m3 * d_d[:, None], dim=0)
-        # d_c = torch.sum(X_m1 * d_d[:, None] / self.eta_c, dim=0)
-
-        d_g_c = d_g + d_c
-
-        Y = torch.stack([d_g_c, d_p, d_s, d_c, d_d])
-
-        return Y
-
-
-class gru_module_4_v2(nn.Module):
     '''
     Module-4 of Neural GrU.
 
@@ -337,9 +252,9 @@ class neuralGrU(nn.Module):
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.m1 = gru_module_1(device=device, eta_c=eta_c, eta_d=eta_d)
-        self.m2 = gru_module_2_v2(eta_d=eta_d, alpha=alpha)
+        self.m2 = gru_module_2(eta_d=eta_d, alpha=alpha)
         self.m3 = gru_module_3()
-        self.m4 = gru_module_4_v2(eta_c=eta_c, eta_d=eta_d)
+        self.m4 = gru_module_4(eta_c=eta_c, eta_d=eta_d)
 
     def forward(self, pi_g, pi_p, pi_s, pi_c, pi_d, d_t, C_t):
 
