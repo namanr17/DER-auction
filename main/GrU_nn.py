@@ -127,7 +127,6 @@ class gru_module_2(nn.Module):
 
         X1 = F.softmin(2 * B * X, dim=1)
         X2 = F.softmin(2 * B * (X + self.alpha * X1), dim=1)
-        # X3 = F.relu(torch.ones_like(X1, requires_grad=True) - X1 - X2)
         X3 = F.softmin(2 * B * (X  + self.alpha * X1 + self.alpha * X2), dim=1)
 
         Y = torch.stack([X1, X2, X3], dim=0)
