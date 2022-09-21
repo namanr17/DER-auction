@@ -247,6 +247,9 @@ class neuralGrU(nn.Module):
         super().__init__()
 
         self.B = B
+        self.device = device
+        self.alpha = alpha 
+
         if not device:
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -255,12 +258,23 @@ class neuralGrU(nn.Module):
         self.m3 = gru_module_3()
         self.m4 = gru_module_4(eta_c=eta_c, eta_d=eta_d)
 
-    def forward(self, pi_g, pi_p, pi_s, pi_c, pi_d, d_t, C_t):
+    def forward(self, pi_g, pi_p, pi_s, pi_c, pi_d, d_t, C_p=None, C_d=None, C_g=None):
 
         ppi_p = F.relu(pi_p)
         ppi_s = F.relu(pi_s)
         ppi_c = F.relu(pi_c)
         ppi_d = F.relu(pi_d)
+
+        if not torch.is_tensor(C_d):
+            C_d = torch.ones(24, requires_grad=False, device=self.device) * self.alpha
+        
+        if not torch.is_tensor(C_g):
+            C_g = torch.ones(24, requires_grad=False, device=self.device) * self.alpha
+
+        if not torch.is_tensor(C_p):
+            C_p = torch.ones(24, requires_grad=False, device=self.device) * self.alpha
+
+        C_t = torch.stack([C_d, C_p, C_g]).T
 
         pi_tilda_c_t, i_t = self.m1(ppi_s, ppi_c, pi_g, self.B)
         a_t = self.m2(pi_tilda_c_t, ppi_d, ppi_p, pi_g, self.B)
