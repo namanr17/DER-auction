@@ -2,36 +2,23 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-import numpy as np
-
 
 class gru_module_1(nn.Module):
     '''
     Module-1 of Neural GrU.
 
-    Parameters
+    Attributes
     ----------
-    pi_s : torch tensor of shape (24, )
-        Storage prices
+    device : torch.device type, default=None (cpu)
+        Device to load the model on
 
-    pi_c : torch tensor of shape (24, )
-        Charging prices
+    eta_c : float type, default=1
+        Charging efficiency
 
-    pi_g : torch tensor of shape (24, )
-        Grid prices
-
-    B : float
-        Inverse Temperature
-
-    Returns
-    -------
-    X2 : torch tensor of shape (24, )
-        pi_tilda_c : Price of importing power from cheapest time slot to t
-    
-    X3 : torch tensor of shape (24, 24)
-        i^t : One hot vector representing the cheapest time slot for charging the power to be discharged at time slot t
+    eta_d : float type, default=1
+        Discharging efficiency
     '''
-
+    
     def __init__(self, device, eta_c, eta_d):
         super().__init__()
 
@@ -59,6 +46,32 @@ class gru_module_1(nn.Module):
 
 
     def forward(self, pi_s, pi_c, pi_g, B):
+        '''
+        Forward method.
+        
+        Parameters
+        ----------
+        pi_s : torch tensor of shape (24, )
+            Storage prices
+
+        pi_c : torch tensor of shape (24, )
+            Charging prices
+
+        pi_g : torch tensor of shape (24, )
+            Grid prices
+
+        B : float
+            Inverse Temperature
+
+        Returns
+        -------
+        X2 : torch tensor of shape (24, )
+            pi_tilda_c : Price of importing power from cheapest time slot to t
+        
+        X3 : torch tensor of shape (24, 24)
+            i^t : One hot vector representing the cheapest time slot for charging the power to be discharged at time slot t
+        '''
+
         pi_c_eta = pi_c / ( self.eta_c * self.eta_d )
         pi_s_eta = pi_s / self.eta_d
 
@@ -94,24 +107,13 @@ class gru_module_2(nn.Module):
     '''
     Module-2 of Neural GrU.
 
-    Parameters
+    Attributes
     ----------
-    pi_tilda_c : torch tensor of shape (24, )
-        Price of importing power from cheapest time slot
+    eta_d : float type
+        Discharging efficiency
     
-    pi_d : torch tensor of shape (24, )
-        Discharging prices
-
-    pi_p : torch tensor of shape (24, )
-        PV Energy prices
-
-    pi_g : torch tensor of shape (24, )
-        Grid prices
-
-    Returns
-    -------
-    Y : torch tensor of shape (3, 24, 3)
-        a^j_t : One hot vectors representing the first (j=0), second (j=1) & third (j=2) cheapest source [d', p, g]; pi_d' = pi_d + pi_tilda_c
+    alpha : float type
+        Price multiplier (alpha > max possible price)
     '''
 
     def __init__(self, eta_d, alpha):
@@ -121,6 +123,32 @@ class gru_module_2(nn.Module):
         self.alpha = alpha
 
     def forward(self, pi_tilda_c, pi_d, pi_p, pi_g, B):
+        '''
+        Forward method.
+
+        Parameters
+        ----------
+        pi_tilda_c : torch tensor of shape (24, )
+            Price of importing power from cheapest time slot
+        
+        pi_d : torch tensor of shape (24, )
+            Discharging prices
+
+        pi_p : torch tensor of shape (24, )
+            PV Energy prices
+
+        pi_g : torch tensor of shape (24, )
+            Grid prices
+
+        B : float type
+            Inverse temperature for Softmin
+
+        Returns
+        -------
+        Y : torch tensor of shape (3, 24, 3)
+            a^j_t : One hot vectors representing the first (j=0), second (j=1) & third (j=2) cheapest source [d', p, g]; pi_d' = pi_d + pi_tilda_c
+        '''
+
         pi_d_eta = pi_d / self.eta_d
 
         X = torch.stack([pi_tilda_c + pi_d_eta, pi_p, pi_g], dim=1)
@@ -138,17 +166,6 @@ class gru_module_2(nn.Module):
 class gru_module_3(nn.Module):
     '''
     Module-3 of Neural GrU.
-
-    Parameters
-    ----------
-    X : torch tensor of shape (24, 24)
-        i^t : One hot vector representing the cheapest time slot for charging to be discharged at time slot t
-
-    Returns
-    -------
-    X2 : torch tensor of shape (24, 24)
-        i_tilda^t : One hot vector representing the time slots to store the charge to be discharged at time slot t
-
     '''
 
     def __init__(self):
@@ -156,6 +173,20 @@ class gru_module_3(nn.Module):
 
 
     def forward(self, X):
+        '''
+        Forward method.
+
+        Parameters
+        ----------
+        X : torch tensor of shape (24, 24)
+            i^t : One hot vector representing the cheapest time slot for charging to be discharged at time slot t
+
+        Returns
+        -------
+        X2 : torch tensor of shape (24, 24)
+            i_tilda^t : One hot vector representing the time slots to store the charge to be discharged at time slot t
+
+        '''
         X1 = torch.cumsum(X, dim=1)
         X2 = torch.tril(X1, diagonal=-1)
         return X2
@@ -166,27 +197,13 @@ class gru_module_4(nn.Module):
     '''
     Module-4 of Neural GrU.
 
-    Parameters
+    Attributes
     ----------
-    X : torch tensor of shape (24, )
-        d_t : Total demand vector
+    eta_c : float type
+        Charging efficiency
 
-    X_m1 : torch tensor of shape (24, 24)
-        i^t : One hot vector representing the cheapest time slot to import power from
-
-    X_m2 : torch tensor of shape (3, 24, 3)
-        a^j_t : One hot vectors representing the first (j=0), second (j=1) & third (j=2) cheapest source [d', p, g]; pi_d' = pi_d + pi_tilda_c
-
-    X_m3 : torch tensor of shape (24, 24)
-        i_tilda^t : One hot vector representing the time slots to store the charge to be discharged at time slot t.
-
-    C : torch tensor of shape (24, 3)
-        C^i : Constraints on discharging demand (i=0), PV demand (i=1), grid demand (i=2).
-
-    Returns
-    -------
-    Y : torch tensor of shape (5, 24)
-        d^star_t : demand breakup vectors
+    eta_d : float type
+        Discharging efficiency
 
     '''
 
@@ -198,6 +215,31 @@ class gru_module_4(nn.Module):
 
 
     def forward(self, X, X_m1, X_m2, X_m3, C):
+        '''
+        Forward method.
+        
+        Parameters
+        ----------
+        X : torch tensor of shape (24, )
+            d_t : Total demand vector
+
+        X_m1 : torch tensor of shape (24, 24)
+            i^t : One hot vector representing the cheapest time slot to import power from
+
+        X_m2 : torch tensor of shape (3, 24, 3)
+            a^j_t : One hot vectors representing the first (j=0), second (j=1) & third (j=2) cheapest source [d', p, g]; pi_d' = pi_d + pi_tilda_c
+
+        X_m3 : torch tensor of shape (24, 24)
+            i_tilda^t : One hot vector representing the time slots to store the charge to be discharged at time slot t.
+
+        C : torch tensor of shape (24, 3)
+            C^i : Constraints on discharging demand (i=0), PV demand (i=1), grid demand (i=2).
+
+        Returns
+        -------
+        Y : torch tensor of shape (5, 24)
+            d^star_t : demand breakup vectors
+        '''
 
         a_0, a_1, a_2 = X_m2
 
@@ -234,16 +276,26 @@ class neuralGrU(nn.Module):
     '''
     Neural Network implementation of GrU Algorithm.
     Connects the various modules of Neural GrU.
+
+    Attributes
+    ----------
+    B : float
+        Inverse Temperature
+
+    device : torch.device type, default=None (cpu)
+        Device to load the model on
+
+    eta_c : float type, default=1
+        Charging efficiency
+
+    eta_d : float type, default=1
+        Discharging efficiency
+    
+    alpha : float type, default=1e3
+        Price multiplier (alpha > max possible price)
     '''
 
     def __init__(self, B, device=None, eta_c=1, eta_d=1, alpha=1e3):
-        '''
-        @parameter B: Inverse temp for softmin
-        @parameter device: torch.device to load the model on
-        @parameter eta_c: Charging efficiency, default=1
-        @parameter eta_d: Discharging efficiency, default=1
-        @parameter alpha: Price multiplier (alpha > max possible price), default=1e3
-        '''
         super().__init__()
 
         self.B = B
@@ -259,6 +311,43 @@ class neuralGrU(nn.Module):
         self.m4 = gru_module_4(eta_c=eta_c, eta_d=eta_d)
 
     def forward(self, pi_g, pi_p, pi_s, pi_c, pi_d, d_t, C_p=None, C_d=None, C_g=None):
+        '''
+        Forward method of Neural GrU.
+
+        Parameters
+        ----------
+        pi_g : torch tensor of shape (24, )
+            Grid price
+        
+        pi_p : torch tensor of shape (24, )
+            PV Energy prices
+
+        pi_s : torch tensor of shape (24, )
+            Storage prices
+
+        pi_c : torch tensor of shape (24, )
+            Charging prices
+
+        pi_d : torch tensor of shape (24, )
+            Discharging prices
+
+        d_t : torch tensor of shape (24, )
+            Total demand vector
+
+        C_p : torch tensor of shape (24, ), default=None
+            Constraint of PV Energy demand
+        
+        C_d : torch tensor of shape (24, ), default=None
+            Constraint of Discharging demand
+
+        C_p : torch tensor of shape (24, ), default=None
+            Constraint of Grid demand
+
+        Returns
+        -------
+        d_star : torch tensor of shape (5, 24)
+            Demand breakup vectors in order [d_g, d_p, d_s, d_c, d_d]
+        '''
 
         ppi_p = F.relu(pi_p)
         ppi_s = F.relu(pi_s)
