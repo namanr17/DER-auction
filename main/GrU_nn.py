@@ -260,7 +260,7 @@ class gru_module_4(nn.Module):
 
         d_g = (a_0[:, 2] * d_0) + (a_1[:, 2] * d_1) + (a_2[:, 2] * d_2)
         d_p = (a_0[:, 1] * d_0) + (a_1[:, 1] * d_1) + (a_2[:, 1] * d_2)
-        d_d = ((a_0[:, 0] * d_0) + (a_1[:, 0] * d_1) + (a_2[:, 0] * d_2)) / self.eta_d
+        d_d = ((a_0[:, 0] * d_0) + (a_1[:, 0] * d_1) + (a_2[:, 0] * d_2))
 
         d_c = torch.sum(X_m1 * d_d.reshape((24,1)) / self.eta_c, dim=0)
         d_s = torch.sum(X_m3 * d_d.reshape((24,1)), dim=0)
@@ -300,7 +300,9 @@ class neuralGrU(nn.Module):
 
         self.B = B
         self.device = device
-        self.alpha = alpha 
+        self.alpha = alpha
+        self.eta_c = eta_c
+        self.eta_d = eta_d
 
         if not device:
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -363,7 +365,7 @@ class neuralGrU(nn.Module):
         if not torch.is_tensor(C_p):
             C_p = torch.ones(24, requires_grad=False, device=self.device) * self.alpha
 
-        C_t = torch.stack([C_d, C_p, C_g]).T
+        C_t = torch.stack([C_d * self.eta_d, C_p, C_g]).T
 
         pi_tilda_c_t, i_t = self.m1(ppi_s, ppi_c, pi_g, self.B)
         a_t = self.m2(pi_tilda_c_t, ppi_d, ppi_p, pi_g, self.B)
