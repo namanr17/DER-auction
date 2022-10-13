@@ -93,7 +93,7 @@ class gru_module_1(nn.Module):
         for t in range(2, 24):
             e_t = X1[:, idx_nodes:idx_nodes+t]
 
-            X2[:, t] = -1 * F.max_pool1d(-1 * e_t, kernel_size=t).T
+            X2[:, t] = -1 * F.max_pool1d(-1 * e_t, kernel_size=t).mT
             X3[:, t, :t] = F.softmin(B * e_t, dim=1)
 
             idx_nodes += t
