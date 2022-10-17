@@ -12,3 +12,4 @@ Deep Learning Assisted Combinatorial Auction For Community Shared DER
 
 ### To clear in the meeting:
 1. Timezone of grid prices, EI values and total demands
+2. Total Demand from $\pi^g_t$ or Khaled's data
