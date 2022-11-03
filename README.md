@@ -6,10 +6,8 @@ Deep Learning Assisted Combinatorial Auction For Community Shared DER
 ### Generate results for:
 1. ~PV vs Grid~
 2. ~Battery vs Grid~
-3. Revenue Maximisation with PV cap from surfrad data
+3. ~Revenue Maximisation with PV cap & one agent~
+5. Revenue Maximisation with PV cap & agents > 1
 4. Revenue vs Gamma
 5. Scalability (time vs num of agents - Optimisation)
-
-### To clear in the meeting:
-1. Timezone of grid prices, EI values and total demands
-2. Total Demand from $\pi^g_t$ or Khaled's data
+6. Update demand in single agent? (curr d = sum of all agents)
