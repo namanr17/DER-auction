@@ -10,4 +10,4 @@ Deep Learning Assisted Combinatorial Auction For Community Shared DER
 5. Revenue Maximisation with PV cap & agents > 1
 4. Revenue vs Gamma
 5. Scalability (time vs num of agents - Optimisation)
-6. Update demand in single agent? (curr d = sum of all agents)
+6. MAE in demand breakups from NeuralGRU and PyGRU w.r.t inv temp B -> Proof of approx optimality of NeuralGRU
