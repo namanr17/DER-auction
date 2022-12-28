@@ -11,5 +11,4 @@ Deep Learning Assisted Combinatorial Auction For Community Shared DER
 4. Revenue vs Gamma
 5. Scalability (time vs num of agents - Optimisation) on GPU/CPU ==> Fix for using GPU
 6. ~MAE in demand breakups from NeuralGRU and PyGRU w.r.t inv temp B -> Proof of approx optimality of NeuralGRU~
-7. Write about optimisation schedule & hyperparameters.
-8. Plot social welfare vs DER revenue
+7. Social welfare vs DER revenue plot
